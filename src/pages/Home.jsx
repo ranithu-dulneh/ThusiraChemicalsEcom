@@ -2,6 +2,80 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
+const ProductCard = ({ product, addToCart }) => {
+  const [selectedVariant, setSelectedVariant] = useState(null);
+
+  useEffect(() => {
+    if (product.variants && product.variants.length > 0) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product]);
+
+  const handleVariantChange = (e) => {
+    const variant = product.variants.find(v => v.name === e.target.value);
+    setSelectedVariant(variant);
+  };
+
+  const currentPrice = selectedVariant ? selectedVariant.price : product.price;
+
+  const handleAddToCart = () => {
+    if (product.variants && product.variants.length > 0 && !selectedVariant) {
+       // Should not happen due to useEffect default, but safety check
+       return;
+    }
+
+    addToCart({
+      ...product,
+      selectedVariant: selectedVariant, // Pass the specific variant selected
+      price: currentPrice // Ensure the price added to cart is the variant price
+    });
+  };
+
+  return (
+    <div className="col">
+      <div className="card h-100 shadow-sm">
+        <img
+          src={product.image || "https://via.placeholder.com/300?text=No+Image"}
+          className="card-img-top"
+          alt={product.name}
+          style={{ height: '250px', objectFit: 'cover' }}
+        />
+        <div className="card-body d-flex flex-column">
+          <h3 className="card-title text-success">{product.name}</h3>
+          <p className="card-text fs-5">{product.description}</p>
+
+          <div className="mt-auto">
+            {product.variants && product.variants.length > 0 ? (
+              <div className="mb-3">
+                <label className="form-label fw-bold">Select Size:</label>
+                <select
+                  className="form-select form-select-lg"
+                  onChange={handleVariantChange}
+                  value={selectedVariant ? selectedVariant.name : ''}
+                >
+                  {product.variants.map((variant, idx) => (
+                    <option key={idx} value={variant.name}>
+                      {variant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+
+            <p className="card-text fw-bold fs-4">Rs. {currentPrice}</p>
+            <button
+              onClick={handleAddToCart}
+              className="btn btn-success w-100 btn-lg"
+            >
+              Add to Cart
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Home = ({ addToCart }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,29 +115,7 @@ const Home = ({ addToCart }) => {
       <h2 className="mb-4 text-center">Our Products</h2>
       <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         {products.map(product => (
-          <div className="col" key={product.id}>
-            <div className="card h-100 shadow-sm">
-              <img
-                src={product.image || "https://via.placeholder.com/300?text=No+Image"}
-                className="card-img-top"
-                alt={product.name}
-                style={{ height: '250px', objectFit: 'cover' }}
-              />
-              <div className="card-body d-flex flex-column">
-                <h3 className="card-title text-success">{product.name}</h3>
-                <p className="card-text fs-5">{product.description}</p>
-                <div className="mt-auto">
-                  <p className="card-text fw-bold fs-4">Rs. {product.price}</p>
-                  <button
-                    onClick={() => addToCart(product)}
-                    className="btn btn-success w-100 btn-lg"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ProductCard key={product.id} product={product} addToCart={addToCart} />
         ))}
       </div>
       {products.length === 0 && !loading && (

@@ -62,7 +62,12 @@ const Cart = ({ cart, setCart }) => {
                 <div key={index} className="list-group-item d-flex justify-content-between align-items-center p-3">
                   <div>
                     <h5 className="mb-1">{item.name}</h5>
-                    <p className="mb-0 text-muted">{item.description}</p>
+                    <p className="mb-0 text-muted">
+                      {item.selectedVariant ? (
+                        <span className="badge bg-secondary me-2">{item.selectedVariant.name}</span>
+                      ) : null}
+                      {item.description}
+                    </p>
                   </div>
                   <div className="d-flex align-items-center">
                     <span className="fw-bold fs-5 me-3">Rs. {item.price}</span>
