@@ -14,6 +14,7 @@ const Dashboard = () => {
   // Product Form State
   const [newProduct, setNewProduct] = useState({
     name: '',
+    price: '', // Add back base price for non-variant products
     category: '',
     image: '',
     description: '',
@@ -73,24 +74,34 @@ const Dashboard = () => {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    // Validate: Needs name and at least one variant OR a base price (handling legacy/simple too)
-    // But per requirement "Add variants", we enforce at least one variant for new products if we want strictness.
-    // Let's rely on the variants array.
+
     if (!newProduct.name) {
        alert("Product Name is required.");
        return;
     }
 
-    // Check if we have variants. If not, maybe use a "Default" variant if user tries to submit?
-    // Or just alert them.
-    if (newProduct.variants.length === 0) {
-      alert("Please add at least one variant (e.g., Size and Price).");
+    // Validation: Require either a base price OR at least one variant
+    const hasBasePrice = newProduct.price && Number(newProduct.price) > 0;
+    const hasVariants = newProduct.variants.length > 0;
+
+    if (!hasBasePrice && !hasVariants) {
+      alert("Please enter a Price OR add at least one Variant.");
       return;
     }
 
     try {
-      await addDoc(collection(db, "products"), newProduct);
-      setNewProduct({ name: '', category: '', image: '', description: '', variants: [] });
+      // If user provided a base price but no variants, it's a simple product
+      // If user provided variants, we save them.
+      // We save both fields if present.
+
+      const productToSave = {
+        ...newProduct,
+        price: newProduct.price ? Number(newProduct.price) : (hasVariants ? Number(newProduct.variants[0].price) : 0) // Default price for display if only variants
+      };
+
+      await addDoc(collection(db, "products"), productToSave);
+
+      setNewProduct({ name: '', price: '', category: '', image: '', description: '', variants: [] });
       setVariantInput({ name: '', price: '' });
       fetchProducts();
       alert("Product Added!");
@@ -150,24 +161,33 @@ const Dashboard = () => {
                     <label className="form-label">Product Name</label>
                     <input type="text" className="form-control" placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} required />
                   </div>
+
+                  {/* Added Base Price Field back for simple products */}
+                  <div className="col-md-6">
+                    <label className="form-label">Price (Rs) - <em>Optional if adding variants</em></label>
+                    <input type="number" className="form-control" placeholder="Base Price" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
+                  </div>
+
                   <div className="col-md-6">
                     <label className="form-label">Category</label>
                     <input type="text" className="form-control" placeholder="Category" value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
                   </div>
+                  <div className="col-md-6">
+                     <label className="form-label">Image URL</label>
+                    <input type="text" className="form-control" placeholder="Image URL" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
+                  </div>
                   <div className="col-md-12">
                      <label className="form-label">Description</label>
                     <textarea className="form-control" placeholder="Description" rows="2" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}></textarea>
-                  </div>
-                  <div className="col-md-12">
-                     <label className="form-label">Image URL</label>
-                    <input type="text" className="form-control" placeholder="Image URL" value={newProduct.image} onChange={e => setNewProduct({...newProduct, image: e.target.value})} />
                   </div>
 
                   {/* Variants Section */}
                   <div className="col-12">
                     <div className="card bg-light">
                       <div className="card-body">
-                        <h5 className="card-title">Product Variants</h5>
+                        <h5 className="card-title">Product Variants (Optional)</h5>
+                        <p className="small text-muted">Use this if the product has multiple sizes or types with different prices. If you add variants, the base price above is ignored or used as a fallback.</p>
+
                         <div className="d-flex gap-2 mb-3 align-items-end">
                           <div className="flex-grow-1">
                             <label className="form-label small">Size/Variant (e.g. 1L, 500g)</label>
@@ -208,7 +228,6 @@ const Dashboard = () => {
                             ))}
                           </ul>
                         )}
-                        {newProduct.variants.length === 0 && <p className="text-muted small">At least one variant is required.</p>}
                       </div>
                     </div>
                   </div>
@@ -245,7 +264,6 @@ const Dashboard = () => {
                           ))}
                         </ul>
                       ) : (
-                        // Fallback for old products with single price
                          `Rs. ${product.price}`
                       )}
                     </td>
